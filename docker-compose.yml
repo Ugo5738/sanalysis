@@ -1,0 +1,60 @@
+services:
+  web:
+    container_name: ${CONTAINER_PREFIX}-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+        # python manage.py makemigrations &&
+        # python manage.py migrate &&
+        daphne ${PROJECT_NAME}.asgi:application -b 0.0.0.0 -p 8000
+      "
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    # networks:
+    #   - default
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME}
+      - CONTAINER_PREFIX=${CONTAINER_PREFIX}
+
+  redis:
+    container_name: ${CONTAINER_PREFIX}-app-redis
+    image: redis:latest
+    # networks:
+    #   - default
+    environment:
+      - CONTAINER_PREFIX=${CONTAINER_PREFIX}
+
+  celery:
+    container_name: ${CONTAINER_PREFIX}-app-celery
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+        echo 'Waiting for web and redis...';
+        while ! nc -z web 8000 || ! nc -z redis 6379; do
+          sleep 1;
+        done;
+        echo 'Web and Redis are up - starting celery worker';
+        celery -A ${PROJECT_NAME} worker --loglevel=info
+        # celery -A ${PROJECT_NAME} worker --loglevel=info -Q analysis_queue
+      "
+    volumes:
+      - .:/code
+    depends_on:
+      - redis
+    # networks:
+    #   - default
+    environment:
+      - CONTAINER_PREFIX=${CONTAINER_PREFIX}
+      - PROJECT_NAME=${PROJECT_NAME}
+# networks:
+#   default:
+#     name: shared_network
+#     external: true

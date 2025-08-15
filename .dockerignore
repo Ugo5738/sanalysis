@@ -1,0 +1,31 @@
+# .dockerignore
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+*.egg-info/
+
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose-prod.yml
+docker-compose-staging.yml
+.dockerignore
+
+# IDE settings
+.idea/
+.vscode/
+
+# Logs and databases
+*.log
+db.sqlite3
+
+# Other
+.DS_Store

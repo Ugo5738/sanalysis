@@ -1,0 +1,29 @@
+2025-07-28 12:32:13,599 - services.orchestrator_service - INFO - Progress update sent successfully: {'stage': 'complete', 'message': 'Analysis completed successfully', 'progress': 100.0}
+[2025-07-28 12:32:13,599: INFO/ForkPoolWorker-2] Progress update sent successfully: {'stage': 'complete', 'message': 'Analysis completed successfully', 'progress': 100.0}
+2025-07-28 12:32:13,738 - services.orchestrator_service - ERROR - [orchestrator_service.py:73] - Error sending analysis results: 500, message='Internal Server Error', url='https://api.supersami.com/api/orchestration/properties/analysis-callback/'
+[2025-07-28 12:32:13,738: ERROR/ForkPoolWorker-2] Error sending analysis results: 500, message='Internal Server Error', url='https://api.supersami.com/api/orchestration/properties/analysis-callback/'
+2025-07-28 12:32:13,738 - analysis.tasks - ERROR - [tasks.py:151] - Analysis failed: 500, message='Internal Server Error', url='https://api.supersami.com/api/orchestration/properties/analysis-callback/'
+[2025-07-28 12:32:13,738: ERROR/ForkPoolWorker-2] Analysis failed: 500, message='Internal Server Error', url='https://api.supersami.com/api/orchestration/properties/analysis-callback/'
+2025-07-28 12:32:13,801 - services.orchestrator_service - INFO - Progress update sent successfully: {'stage': 'error', 'message': "Error during analysis: 500, message='Internal Server Error', url='https://api.supersami.com/api/orchestration/properties/analysis-callback/'", 'progress': 0.0}
+[2025-07-28 12:32:13,801: INFO/ForkPoolWorker-2] Progress update sent successfully: {'stage': 'error', 'message': "Error during analysis: 500, message='Internal Server Error', url='https://api.supersami.com/api/orchestration/properties/analysis-callback/'", 'progress': 0.0}
+2025-07-28 12:32:13,806 - analysis.utils.backup - DEBUG - Sending analysis task backup payload for PK=1526 to https://backup.supersami.com/api/sdb/analysis-task/
+[2025-07-28 12:32:13,806: DEBUG/ForkPoolWorker-2] Sending analysis task backup payload for PK=1526 to https://backup.supersami.com/api/sdb/analysis-task/
+
+
+2025-07-28 12:31:38,401 - services.orchestrator_service - INFO - Progress update sent successfully: {'stage': 'analysis', 'message': 'Analyzed group 2/6', 'progress': 86.66666666666667}
+[2025-07-28 12:31:38,401: INFO/ForkPoolWorker-2] Progress update sent successfully: {'stage': 'analysis', 'message': 'Analyzed group 2/6', 'progress': 86.66666666666667}
+[2025-07-28 12:31:41,006: INFO/ForkPoolWorker-1] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+[2025-07-28 12:31:42,036: INFO/ForkPoolWorker-1] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-28 12:31:42,037 - analysis.tasks - ERROR - [tasks.py:151] - Analysis failed: the JSON object must be str, bytes or bytearray, not NoneType
+[2025-07-28 12:31:42,037: ERROR/ForkPoolWorker-1] Analysis failed: the JSON object must be str, bytes or bytearray, not NoneType
+2025-07-28 12:31:42,109 - services.orchestrator_service - INFO - Progress update sent successfully: {'stage': 'error', 'message': 'Error during analysis: the JSON object must be str, bytes or bytearray, not NoneType', 'progress': 0.0}
+[2025-07-28 12:31:42,109: INFO/ForkPoolWorker-1] Progress update sent successfully: {'stage': 'error', 'message': 'Error during analysis: the JSON object must be str, bytes or bytearray, not NoneType', 'progress': 0.0}
+2025-07-28 12:31:42,115 - analysis.utils.backup - DEBUG - Sending analysis task backup payload for PK=1524 to https://backup.supersami.com/api/sdb/analysis-task/
+[2025-07-28 12:31:42,115: DEBUG/ForkPoolWorker-1] Sending analysis task backup payload for PK=1524 to https://backup.supersami.com/api/sdb/analysis-task/
+
+
+2025-07-28 14:20:40,905 - analysis.tasks - ERROR - [tasks.py:151] - Analysis failed: the JSON object must be str, bytes or bytearray, not NoneType
+[2025-07-28 14:20:40,905: ERROR/ForkPoolWorker-1] Analysis failed: the JSON object must be str, bytes or bytearray, not NoneType
+2025-07-28 14:20:40,978 - services.orchestrator_service - INFO - Progress update sent successfully: {'stage': 'error', 'message': 'Error during analysis: the JSON object must be str, bytes or bytearray, not NoneType', 'progress': 0.0}
+[2025-07-28 14:20:40,978: INFO/ForkPoolWorker-1] Progress update sent successfully: {'stage': 'error', 'message': 'Error during analysis: the JSON object must be str, bytes or bytearray, not NoneType', 'progress': 0.0}
+2025-07-28 14:20:40,984 - analysis.utils.backup - DEBUG - Sending analysis task backup payload for PK=1646 to https://backup.supersami.com/api/sdb/analysis-task/

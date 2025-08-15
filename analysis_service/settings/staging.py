@@ -82,7 +82,9 @@ CELERY_TASK_QUEUES = {
 }
 # ================================ CELERY =======================================
 
-MY_DOMAIN = "http://notification-service:8000"
+CSRF_TRUSTED_ORIGINS = [config("CSRF_TRUSTED_ORIGINS")]
+
+MY_DOMAIN = "http://sanalysis-service:8000"
 
 # ================================ HEROKU =======================================
 # # ==> HEROKU LOGGING

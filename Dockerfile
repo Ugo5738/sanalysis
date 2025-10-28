@@ -2,8 +2,9 @@
 FROM python:3.9
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
 
 # Install necessary system dependencies
 RUN apt-get update -y && \

@@ -52,9 +52,9 @@ webdriver-manager
 ftfy
 regex
 tqdm
-torch
-torchvision
-torchaudio
+torch==1.12.1+cpu
+torchvision==0.13.1+cpu
+torchaudio==0.12.1+cpu
 git+https://github.com/openai/CLIP.git
 twilio
 numpy

@@ -47,6 +47,10 @@ jobs:
           PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
           CONTAINER_PREFIX: ${{ secrets.CONTAINER_PREFIX }}
 
+          # ------------------------- AUTH -------------------------
+          SHARED_M2M_JWT_SECRET_KEY: ${{ secrets.SHARED_M2M_JWT_SECRET_KEY }}
+          M2M_JWT_AUDIENCE: ${{ secrets.M2M_JWT_AUDIENCE }}
+
           # ------------------------- TEXT PROCESSING DETAILS -------------------------
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 

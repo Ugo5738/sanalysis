@@ -17,7 +17,7 @@ djangorestframework
 dj-database-url
 drf-spectacular
 drf-yasg
-# httpx==0.23.3
+httpx>=0.27.0
 google-api-python-client
 google-auth
 google-auth-oauthlib

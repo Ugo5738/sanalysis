@@ -23,6 +23,9 @@ class Property(TrackingModel):
     super_id = models.CharField(
         max_length=1028, null=True, blank=True, verbose_name=("Super ID")
     )
+    property_id = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name=("Property ID"), db_index=True
+    )
     bedrooms = models.IntegerField(null=True, blank=True)
     bathrooms = models.IntegerField(null=True, blank=True)
     floorplan_urls = models.JSONField(default=list, blank=True)
@@ -35,7 +38,8 @@ class Property(TrackingModel):
         verbose_name_plural = _("Properties")
 
     def __str__(self):
-        return f"Property: {self.super_id}"
+        identifier = self.super_id or self.property_id or "unknown"
+        return f"Property: {identifier}"
 
 
 class PropertyImage(TrackingModel):
@@ -267,12 +271,16 @@ class OverallImageAnalysis(TrackingModel):
 
 class AnalysisTask(TrackingModel):
     super_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    property_id = models.CharField(max_length=255, null=True, blank=True)
     status = models.CharField(max_length=20, default="PENDING")
     progress = models.FloatField(default=0.0)
     stage = models.CharField(max_length=50, default="")
     stage_progress = models.JSONField(default=dict)
     notes = models.JSONField(default=dict, blank=True)
     trigger_analysis = models.BooleanField(default=True)
+    callback_url = models.URLField(max_length=1028, null=True, blank=True)
+    callback_headers = models.JSONField(default=dict, blank=True)
+    total_images = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = "analysis_task"

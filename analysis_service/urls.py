@@ -14,7 +14,7 @@ default_urlpatterns = [
 ]
 
 custom_urlpatterns = [
-    path("api/analysis/", include("image_condition_analysis.urls")),
+    path("api/image-condition-analysis/", include("image_condition_analysis.urls")),
 ]
 
 spectacular_urlpatterns = [

@@ -59,9 +59,13 @@ class AnalysisView(APIView):
 
         super_id = data["super_id"]
         image_urls = data["image_urls"]
+        property_id = data.get("property_id") or None
         notes = data.get("notes")
+        callback = data.get("callback")
 
-        analyze_images_direct.delay(super_id, image_urls, notes)
+        analyze_images_direct.delay(
+            super_id, image_urls, notes, callback, property_id=property_id
+        )
 
         return Response(
             {"super_id": super_id, "images": len(image_urls), "status": "queued"},

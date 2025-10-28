@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 from datetime import timedelta
@@ -155,6 +156,10 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False  # False to allow JavaScript to access the cookie
 SESSION_COOKIE_HTTPONLY = True
 
+# ==> SUPABASE M2M JWT
+SHARED_M2M_JWT_SECRET_KEY = config("SHARED_M2M_JWT_SECRET_KEY")
+M2M_JWT_AUDIENCE = config("M2M_JWT_AUDIENCE")
+
 # ==> CONSTANTS
 CART_SESSION_ID = secrets.token_urlsafe(16)
 
@@ -176,12 +181,11 @@ REST_AUTH = {
 # ==> REST FRAMEWORK
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "analysis_service.auth.supabase_auth.SupabaseJWTAuthentication",
+        # USE YOUR NEW M2M AUTHENTICATOR HERE
+        "image_condition_analysis.analysis_service.auth.m2m_auth.M2MJWTAuthentication",
+        # Keep SessionAuthentication for the Django Admin interface
         "rest_framework.authentication.SessionAuthentication",
     ],
-    # "DEFAULT_PERMISSION_CLASSES": [
-    #     "rest_framework.permissions.IsAuthenticated",
-    # ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
 }
@@ -236,4 +240,36 @@ ADMIN_PASSWORD = config("ADMIN_PASSWORD")
 # ==> OPENAI
 OPENAI_API_KEY = config("OPENAI_API_KEY")
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+
+# ==> Status notification configuration (S3 snapshots + webhook callbacks)
+STATUS_S3_BUCKET_NAME = (
+    config("IMAGE_CONDITION_STATUS_S3_BUCKET_NAME", default=None, cast=str) or None
+)
+STATUS_S3_REGION = (
+    config("IMAGE_CONDITION_STATUS_S3_REGION", default=None, cast=str) or None
+)
+STATUS_S3_PREFIX = config(
+    "IMAGE_CONDITION_STATUS_S3_PREFIX", default="image-condition/status", cast=str
+)
+STATUS_S3_PUBLIC_BASE_URL = (
+    config("IMAGE_CONDITION_STATUS_S3_PUBLIC_BASE_URL", default=None, cast=str) or None
+)
+STATUS_S3_ENDPOINT_URL = (
+    config("IMAGE_CONDITION_STATUS_S3_ENDPOINT_URL", default=None, cast=str) or None
+)
+STATUS_WEBHOOK_URL = (
+    config("IMAGE_CONDITION_STATUS_WEBHOOK_URL", default=None, cast=str) or None
+)
+_STATUS_WEBHOOK_HEADERS_RAW = (
+    config("IMAGE_CONDITION_STATUS_WEBHOOK_HEADERS", default=None, cast=str) or None
+)
+if _STATUS_WEBHOOK_HEADERS_RAW:
+    try:
+        STATUS_WEBHOOK_HEADERS = json.loads(_STATUS_WEBHOOK_HEADERS_RAW)
+    except json.JSONDecodeError:
+        STATUS_WEBHOOK_HEADERS = None
+else:
+    STATUS_WEBHOOK_HEADERS = None
+
+STATUS_NOTIFICATIONS_ENABLED = bool(STATUS_S3_BUCKET_NAME)
 # ================================ CUSTOM VARIABLES =======================================

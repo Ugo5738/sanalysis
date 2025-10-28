@@ -122,7 +122,16 @@ class PromptUpdateSerializer(serializers.Serializer):
     # spaces = serializers.ListField(child=serializers.CharField(), required=False)
 
 
+class WorkflowCallbackSerializer(serializers.Serializer):
+    url = serializers.URLField()
+    headers = serializers.DictField(
+        child=serializers.CharField(), required=False, allow_empty=True
+    )
+
+
 class DirectAnalysisRequestSerializer(serializers.Serializer):
     super_id = serializers.CharField()
+    property_id = serializers.CharField(required=False, allow_blank=True)
     image_urls = serializers.ListField(child=serializers.URLField(), allow_empty=False)
     notes = serializers.DictField(required=False)
+    callback = WorkflowCallbackSerializer(required=False)

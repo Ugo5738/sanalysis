@@ -5,7 +5,7 @@
 ### Backend Server
 
 ```
-ssh -i keys/propertyfinder.pem ubuntu@
+ssh -i keys/propertyfinder.pem ubuntu@98.81.209.166
 ```
 
 Purpose: Login to the backend server using SSH with a specified key file.

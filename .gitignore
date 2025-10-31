@@ -3,6 +3,7 @@
 # Environments
 .env
 .env.*
+!.env.prod.gpg
 !.env.example
 
 # Output files

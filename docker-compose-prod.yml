@@ -1,5 +1,7 @@
 services:
   web:
+    env_file:
+      - .env.prod
     build:
       context: .
       dockerfile: Dockerfile
@@ -63,6 +65,8 @@ services:
       - DEFAULT_EMAIL=${USER_EMAIL}
 
   celery:
+    env_file:
+      - .env.prod
     build:
       context: .
       dockerfile: Dockerfile

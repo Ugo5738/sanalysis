@@ -91,11 +91,11 @@ jobs:
           ssh-keyscan -H ${{ secrets.SERVER_IP_STAGING }} >> ~/.ssh/known_hosts
       - name: Install GPG
         run: sudo apt-get update && sudo apt-get install -y gnupg
-      - name: Decrypt .env.gpg File
+      - name: Decrypt .env.prod.gpg File
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: echo $GPG_PASSPHRASE | gpg --quiet --batch --yes --decrypt --passphrase-fd 0 --output ./.env ./.env.gpg
-      - name: Transfer Repository to Remote Server (Including Decrypted .env)
+        run: echo $GPG_PASSPHRASE | gpg --quiet --batch --yes --decrypt --passphrase-fd 0 --output ./.env.prod ./.env.prod.gpg
+      - name: Transfer Repository to Remote Server (Including Decrypted .env.prod)
         run: rsync -avz -e "ssh -i ~/.ssh/id_rsa" ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP_STAGING }}:/home/ubuntu/sanalysis/
       - name: Deploy to server
         uses: appleboy/ssh-action@master

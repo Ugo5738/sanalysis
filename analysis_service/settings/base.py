@@ -157,8 +157,13 @@ CSRF_COOKIE_HTTPONLY = False  # False to allow JavaScript to access the cookie
 SESSION_COOKIE_HTTPONLY = True
 
 # ==> SUPABASE M2M JWT
-SHARED_M2M_JWT_SECRET_KEY = config("SHARED_M2M_JWT_SECRET_KEY")
-M2M_JWT_AUDIENCE = config("M2M_JWT_AUDIENCE")
+SHARED_M2M_JWT_SECRET_KEY = config("SHARED_M2M_JWT_SECRET_KEY", default=None)
+M2M_JWT_SECRET_KEY = config("M2M_JWT_SECRET_KEY", default=SHARED_M2M_JWT_SECRET_KEY)
+M2M_JWT_AUDIENCE = config("M2M_JWT_AUDIENCE", default="paservices_microservices")
+AUTH_SERVICE_JWT_ALGORITHM = config("AUTH_SERVICE_JWT_ALGORITHM", default="RS256")
+AUTH_SERVICE_URL = config("AUTH_SERVICE_URL", default="http://auth_service:8000/api/v1")
+AUTH_SERVICE_JWKS_URL = config("AUTH_SERVICE_JWKS_URL", default="")
+AUTH_SERVICE_ISSUER = config("AUTH_SERVICE_ISSUER", default="paservices_auth_service")
 
 # ==> CONSTANTS
 CART_SESSION_ID = secrets.token_urlsafe(16)

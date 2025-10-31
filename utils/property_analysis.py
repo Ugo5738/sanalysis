@@ -168,7 +168,16 @@ async def categorize_images(
         base64_image = f"data:image/jpeg;base64,{base64_encoded}"
 
         structured_output = analyze_single_image(categorize_prompt, base64_image)
-        category_result = structured_output["response_content"]
+        if structured_output.get("error"):
+            raise RuntimeError(
+                f"Categorization failed for batch {batch_num}: {structured_output['error']}"
+            )
+
+        category_result = structured_output.get("response_content")
+        if not category_result:
+            raise RuntimeError(
+                f"Categorization failed for batch {batch_num}: missing response content"
+            )
 
         if category_result:
             result = json.loads(category_result)

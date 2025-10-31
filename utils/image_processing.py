@@ -68,9 +68,11 @@ async def download_images(
 ):
     image_ids = []
     failed_downloads = []
-    driver = None
+    total_images = max(len(property_instance.image_urls), 1)
 
     for idx, image_url in enumerate(property_instance.image_urls):
+        downloaded = False
+        last_error = None
         for attempt in range(max_retries):
             try:
                 img_content = await download_with_requests(image_url)
@@ -99,28 +101,34 @@ async def download_images(
                     )
                     image_ids.append(property_image.id)
 
-                    # Update progress
-                    progress_percent = (idx + 1) / total_images * 100
+                    # Update progress using completed count
+                    completed = len(image_ids)
+                    progress_percent = (completed / total_images) * 100
                     await update_progress(
                         "download",
-                        f"Downloaded image {idx + 1}/{total_images}",
+                        f"Downloaded image {completed}/{total_images}",
                         progress_percent,
                     )
+                    downloaded = True
                     break  # Successful download, move to the next image
+                else:
+                    last_error = "Empty response body"
             except Exception as e:
                 logger.info(f"Error downloading image {idx}: {str(e)}")
+                last_error = str(e)
                 if attempt < max_retries - 1:
                     await asyncio.sleep(retry_delay * (attempt + 1))
-                else:
-                    # After all retries, log as a failed download
-                    failed_downloads.append((idx, image_url, str(e)))
-
-        if failed_downloads:
-            logger.warning(
-                f"Finished processing images with {len(failed_downloads)} failed downloads."
+        if not downloaded:
+            failed_downloads.append(
+                (idx, image_url, last_error or "Failed to download after retries")
             )
-        else:
-            logger.info("Finished processing all images successfully.")
+
+    if failed_downloads:
+        logger.warning(
+            f"Finished processing images with {len(failed_downloads)} failed downloads."
+        )
+    else:
+        logger.info("Finished processing all images successfully.")
 
     return image_ids, failed_downloads
 

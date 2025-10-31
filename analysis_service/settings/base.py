@@ -3,7 +3,7 @@ import os
 import secrets
 from datetime import timedelta
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import dj_database_url
 from corsheaders.defaults import default_headers
@@ -141,6 +141,19 @@ def get_origin_list(env_variable: str, default: str = "") -> List[str]:
     return [origin.strip() for origin in origins.split(",") if origin.strip()]
 
 
+def get_optional_env(env_variable: str, default: Optional[str] = None) -> Optional[str]:
+    """
+    Read an optional string environment variable, normalizing blanks/\"none\" to None.
+    """
+    value = config(env_variable, default=None, cast=str)
+    if value is None:
+        return default
+    value = value.strip()
+    if not value or value.lower() in {"none", "null"}:
+        return default
+    return value
+
+
 # ==> CORS
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = get_origin_list("CORS_ORIGINS")
@@ -157,12 +170,14 @@ CSRF_COOKIE_HTTPONLY = False  # False to allow JavaScript to access the cookie
 SESSION_COOKIE_HTTPONLY = True
 
 # ==> SUPABASE M2M JWT
-SHARED_M2M_JWT_SECRET_KEY = config("SHARED_M2M_JWT_SECRET_KEY", default=None)
-M2M_JWT_SECRET_KEY = config("M2M_JWT_SECRET_KEY", default=SHARED_M2M_JWT_SECRET_KEY)
+SHARED_M2M_JWT_SECRET_KEY = get_optional_env("SHARED_M2M_JWT_SECRET_KEY")
+M2M_JWT_SECRET_KEY = get_optional_env(
+    "M2M_JWT_SECRET_KEY", SHARED_M2M_JWT_SECRET_KEY
+)
 M2M_JWT_AUDIENCE = config("M2M_JWT_AUDIENCE", default="paservices_microservices")
 AUTH_SERVICE_JWT_ALGORITHM = config("AUTH_SERVICE_JWT_ALGORITHM", default="RS256")
 AUTH_SERVICE_URL = config("AUTH_SERVICE_URL", default="http://auth_service:8000/api/v1")
-AUTH_SERVICE_JWKS_URL = config("AUTH_SERVICE_JWKS_URL", default="")
+AUTH_SERVICE_JWKS_URL = get_optional_env("AUTH_SERVICE_JWKS_URL")
 AUTH_SERVICE_ISSUER = config("AUTH_SERVICE_ISSUER", default="paservices_auth_service")
 
 # ==> CONSTANTS
@@ -248,27 +263,17 @@ OPENAI_API_KEY = config("OPENAI_API_KEY")
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 # ==> Status notification configuration (S3 snapshots + webhook callbacks)
-STATUS_S3_BUCKET_NAME = (
-    config("IMAGE_CONDITION_STATUS_S3_BUCKET_NAME", default=None, cast=str) or None
-)
-STATUS_S3_REGION = (
-    config("IMAGE_CONDITION_STATUS_S3_REGION", default=None, cast=str) or None
-)
+STATUS_S3_BUCKET_NAME = get_optional_env("IMAGE_CONDITION_STATUS_S3_BUCKET_NAME")
+STATUS_S3_REGION = get_optional_env("IMAGE_CONDITION_STATUS_S3_REGION")
 STATUS_S3_PREFIX = config(
     "IMAGE_CONDITION_STATUS_S3_PREFIX", default="image-condition/status", cast=str
 )
-STATUS_S3_PUBLIC_BASE_URL = (
-    config("IMAGE_CONDITION_STATUS_S3_PUBLIC_BASE_URL", default=None, cast=str) or None
+STATUS_S3_PUBLIC_BASE_URL = get_optional_env(
+    "IMAGE_CONDITION_STATUS_S3_PUBLIC_BASE_URL"
 )
-STATUS_S3_ENDPOINT_URL = (
-    config("IMAGE_CONDITION_STATUS_S3_ENDPOINT_URL", default=None, cast=str) or None
-)
-STATUS_WEBHOOK_URL = (
-    config("IMAGE_CONDITION_STATUS_WEBHOOK_URL", default=None, cast=str) or None
-)
-_STATUS_WEBHOOK_HEADERS_RAW = (
-    config("IMAGE_CONDITION_STATUS_WEBHOOK_HEADERS", default=None, cast=str) or None
-)
+STATUS_S3_ENDPOINT_URL = get_optional_env("IMAGE_CONDITION_STATUS_S3_ENDPOINT_URL")
+STATUS_WEBHOOK_URL = get_optional_env("IMAGE_CONDITION_STATUS_WEBHOOK_URL")
+_STATUS_WEBHOOK_HEADERS_RAW = get_optional_env("IMAGE_CONDITION_STATUS_WEBHOOK_HEADERS")
 if _STATUS_WEBHOOK_HEADERS_RAW:
     try:
         STATUS_WEBHOOK_HEADERS = json.loads(_STATUS_WEBHOOK_HEADERS_RAW)

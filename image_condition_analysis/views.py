@@ -5,6 +5,7 @@ from image_condition_analysis.models import (
     ImageConditionAnalysis,
     OverallImageAnalysis,
     Prompt,
+    Property,
 )
 from image_condition_analysis.serializers import (
     AnalysisTaskSerializer,
@@ -62,6 +63,21 @@ class AnalysisView(APIView):
         property_id = data.get("property_id") or None
         notes = data.get("notes")
         callback = data.get("callback")
+
+        if Property.objects.filter(super_id=super_id).exists():
+            logger.warning(
+                "Rejecting analyze request: Property with super_id=%s already exists",
+                super_id,
+            )
+            return Response(
+                {
+                    "detail": (
+                        "A workflow already exists for super_id=%s. "
+                        "Please request a new super_id before retrying." % super_id
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
         analyze_images_direct.delay(
             super_id, image_urls, notes, callback, property_id=property_id

@@ -28,6 +28,15 @@ from utils.prompts import categorize_prompt, get_prompts, spaces
 logger = configure_logger(__name__)
 
 
+def _property_reference(property_instance):
+    """Return the most useful identifier available for logging/results."""
+    return (
+        getattr(property_instance, "super_id", None)
+        or getattr(property_instance, "property_id", None)
+        or str(getattr(property_instance, "pk", ""))
+    )
+
+
 async def process_property(image_ids, update_progress, super_id):
     total_steps = 5  # Total number of main steps in the process
     step = 0  # Current step
@@ -44,14 +53,38 @@ async def process_property(image_ids, update_progress, super_id):
     }
 
     # Resolve the Property primarily by super_id to ensure single-run traceability.
-    property_instance = await sync_to_async(Property.objects.get)(super_id=super_id)
-
     async def update_step_progress(stage, message, sub_progress=0):
         nonlocal step
         progress = (step / total_steps + sub_progress / total_steps) * 100
         await update_progress(stage, message, progress)
 
     try:
+        try:
+            property_instance = await sync_to_async(
+                Property.objects.get, thread_sensitive=True
+            )(super_id=super_id)
+        except Property.MultipleObjectsReturned:
+            duplicate_details = await sync_to_async(
+                list, thread_sensitive=True
+            )(
+                Property.objects.filter(super_id=super_id)
+                .order_by("-updated_at", "-id")
+                .values_list("id", "updated_at")
+            )
+            message = (
+                "Multiple Property rows share super_id=%s. Duplicate ids (newest first)=%s. "
+                "Each workflow must use a unique super_id."
+            )
+            logger.error(message, super_id, duplicate_details)
+            await update_progress(
+                "error",
+                message % (super_id, duplicate_details),
+                0.0,
+            )
+            raise
+
+        results["property_url"] = _property_reference(property_instance)
+
         # Step 1: Initial categorization
         step = 1
         await update_step_progress("categorization", "Categorizing images", 0)
@@ -98,7 +131,7 @@ async def process_property(image_ids, update_progress, super_id):
             await sync_to_async(OverallImageAnalysis.objects.update_or_create)(
                 super_id=super_id,
                 defaults={
-                    "property_url": property_instance.url,
+                    "property_url": _property_reference(property_instance),
                     "total_images_processed": property_condition.get(
                         "total_assessments"
                     ),
@@ -125,7 +158,10 @@ async def process_property(image_ids, update_progress, super_id):
         except Exception as e:
             logger.error(f"Failed to persist OverallImageAnalysis: {e}")
 
-        logger.info(f"==================== Final Result completed ====================")
+        logger.info(
+            "==================== Final Result completed for super_id=%s ====================",
+            super_id,
+        )
 
         await update_step_progress(
             "overall_analysis", "Finished calculating overall condition", 1
@@ -133,7 +169,7 @@ async def process_property(image_ids, update_progress, super_id):
 
         # Final result compilation
         final_result = {
-            "Property URL": property_instance.url,
+            "Property URL": _property_reference(property_instance),
             "Condition": property_condition,
             "Detailed Analysis": results["stages"]["detailed_analysis"],
             "Overall Analysis": results,
@@ -277,7 +313,10 @@ async def update_property_image_category(property_instance, image_id, category_i
 
 async def group_images(property_instance, results, update_step_progress):
     try:
-        logger.info(f"Starting grouping images for property: {property_instance.url}")
+        logger.info(
+            "Starting grouping images for property reference: %s",
+            _property_reference(property_instance),
+        )
         images = await sync_to_async(list)(
             PropertyImage.objects.filter(property=property_instance)
         )
@@ -333,7 +372,8 @@ async def group_images(property_instance, results, update_step_progress):
 async def merge_grouped_images(property_instance, results, update_step_progress):
     try:
         logger.info(
-            f"Starting merging grouped images for property: {property_instance.url}"
+            "Starting merging grouped images for property reference: %s",
+            _property_reference(property_instance),
         )
         grouped_images = await sync_to_async(list)(
             GroupedImages.objects.filter(property=property_instance)

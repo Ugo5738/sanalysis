@@ -1,5 +1,4 @@
 from analysis_service.config.logging_config import configure_logger
-from django.shortcuts import get_object_or_404
 from image_condition_analysis.models import (
     AnalysisTask,
     ImageConditionAnalysis,

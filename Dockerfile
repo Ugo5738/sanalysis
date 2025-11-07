@@ -1,33 +1,17 @@
 # Pull the base image
-FROM python:3.9
+FROM python:3.9 AS deps
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
 
-# Install necessary system dependencies
-RUN apt-get update -y && \
-  apt-get install -y \
-  git \
-  default-jdk \
-  netcat-openbsd \
-  wget \
-  gnupg \
-  curl \
-  && apt-get clean && \
-  rm -rf /var/lib/apt/lists/*
+WORKDIR /install
 
-# Set work directory
-WORKDIR /code
+COPY requirements.txt ./
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy project
-COPY . /code/
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Download the CLIP model with retries to avoid partial downloads
+# Download the CLIP weights once the dependencies are installed
 RUN python - <<'PY'
 import os
 import shutil
@@ -41,7 +25,7 @@ download_root = os.path.expanduser("~/.cache/clip")
 for attempt in range(5):
     try:
         clip.load("ViT-B/32", download_root=download_root)
-    except RuntimeError as err:
+    except RuntimeError:
         if attempt >= 4:
             raise
         shutil.rmtree(download_root, ignore_errors=True)
@@ -50,10 +34,33 @@ for attempt in range(5):
         break
 PY
 
-# Set execute permission for entrypoint.sh
+FROM python:3.9
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+    git \
+    default-jdk \
+    netcat-openbsd \
+    wget \
+    gnupg \
+    curl \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /code
+
+# Reuse installed Python packages and cached CLIP weights from the deps stage
+COPY --from=deps /usr/local /usr/local
+COPY --from=deps /root/.cache/clip /root/.cache/clip
+
+COPY . /code/
+
 RUN chmod +x /code/entrypoint.sh
 
 ENTRYPOINT ["/code/entrypoint.sh"]
 
-# Run the application
 CMD ["daphne", "analysis_service.asgi:application", "--port", "$PORT", "--bind", "0.0.0.0"]

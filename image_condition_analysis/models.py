@@ -2,6 +2,7 @@ import hashlib
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+
 from helpers.models import TrackingModel
 
 
@@ -24,7 +25,11 @@ class Property(TrackingModel):
         max_length=1028, null=True, blank=True, verbose_name=("Super ID")
     )
     property_id = models.CharField(
-        max_length=255, null=True, blank=True, verbose_name=("Property ID"), db_index=True
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name=("Property ID"),
+        db_index=True,
     )
     bedrooms = models.IntegerField(null=True, blank=True)
     bathrooms = models.IntegerField(null=True, blank=True)
@@ -40,6 +45,74 @@ class Property(TrackingModel):
     def __str__(self):
         identifier = self.super_id or self.property_id or "unknown"
         return f"Property: {identifier}"
+
+
+class WorkflowStatus(TrackingModel):
+    super_id = models.CharField(
+        max_length=1028,
+        verbose_name=_("Super ID"),
+        db_index=True,
+    )
+    property_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name=_("Property ID"),
+        db_index=True,
+    )
+    context = models.CharField(
+        max_length=64,
+        default="image_condition_analysis",
+        verbose_name=_("Context"),
+    )
+    status = models.CharField(
+        max_length=64,
+        default="STARTED",
+        verbose_name=_("Status"),
+    )
+    stage = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        verbose_name=_("Stage"),
+    )
+    progress = models.FloatField(
+        null=True,
+        blank=True,
+        verbose_name=_("Progress"),
+    )
+    data_location = models.CharField(
+        max_length=2048,
+        null=True,
+        blank=True,
+        verbose_name=_("Data Location"),
+    )
+    last_error = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name=_("Last Error"),
+    )
+
+    class Meta:
+        db_table = "workflow_status"
+        verbose_name = _("Workflow Status")
+        verbose_name_plural = _("Workflow Statuses")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["super_id", "context"],
+                name="uq_workflow_status_context",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["property_id"],
+                name="idx_workflow_status_prop_id",
+            ),
+            models.Index(
+                fields=["super_id"],
+                name="idx_workflow_status_super_id",
+            ),
+        ]
 
 
 class PropertyImage(TrackingModel):

@@ -11,6 +11,7 @@ from image_condition_analysis.models import (
     Property,
     PropertyImage,
     SampleImage,
+    WorkflowStatus,
 )
 
 
@@ -242,3 +243,19 @@ class PromptAdmin(admin.ModelAdmin):
 
         # If it's a new object or nothing changed, just save normally
         super().save_model(request, obj, form, change)
+
+
+@admin.register(WorkflowStatus)
+class WorkflowStatusAdmin(admin.ModelAdmin):
+    list_display = (
+        "super_id",
+        "property_id",
+        "context",
+        "status",
+        "stage",
+        "progress",
+        "created_at",
+    )
+    list_filter = ("status", "context", "stage", "created_at")
+    search_fields = ("super_id", "property_id", "context", "stage")
+    readonly_fields = ("created_at", "updated_at")

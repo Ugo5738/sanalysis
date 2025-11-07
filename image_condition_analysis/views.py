@@ -5,6 +5,7 @@ from image_condition_analysis.models import (
     OverallImageAnalysis,
     Prompt,
     Property,
+    WorkflowStatus,
 )
 from image_condition_analysis.serializers import (
     AnalysisTaskSerializer,
@@ -12,11 +13,13 @@ from image_condition_analysis.serializers import (
     ImageConditionAnalysisSerializer,
     OverallImageAnalysisSerializer,
     PromptUpdateSerializer,
+    WorkflowStatusSerializer,
+    WorkflowStatusUpdateSerializer,
 )
 from image_condition_analysis.tasks import analyze_images_direct
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -158,3 +161,56 @@ class GetPromptView(APIView):
             "is_active": prompt.is_active,
         }
         return Response(data, status=status.HTTP_200_OK)
+
+
+class WorkflowStatusView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, super_id, context=None):
+        queryset = WorkflowStatus.objects.filter(super_id=super_id)
+        if context:
+            record = queryset.filter(context=context).first()
+            if not record:
+                return Response(
+                    {
+                        "detail": f"No workflow status found for super_id={super_id} context={context}"
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            serializer = WorkflowStatusSerializer(record)
+            return Response(serializer.data)
+
+        serializer = WorkflowStatusSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def put(self, request, super_id, context=None):
+        incoming = request.data.copy()
+        if context and "context" not in incoming:
+            incoming["context"] = context
+
+        serializer = WorkflowStatusUpdateSerializer(data=incoming)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+        context_value = payload["context"]
+
+        record, created = WorkflowStatus.objects.get_or_create(
+            super_id=super_id,
+            context=context_value,
+            defaults={
+                "property_id": payload.get("property_id"),
+                "status": payload["status"],
+                "stage": payload.get("stage"),
+                "progress": payload.get("progress"),
+                "data_location": payload.get("data_location"),
+                "last_error": payload.get("last_error"),
+            },
+        )
+        if not created:
+            record.status = payload["status"]
+            for field in ["property_id", "stage", "progress", "data_location", "last_error"]:
+                if field in payload:
+                    setattr(record, field, payload.get(field))
+        record.save()
+
+        output = WorkflowStatusSerializer(record)
+        return Response(output.data, status=status.HTTP_200_OK)

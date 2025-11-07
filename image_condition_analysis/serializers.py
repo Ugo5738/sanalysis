@@ -5,6 +5,7 @@ from image_condition_analysis.models import (
     Prompt,
     Property,
     PropertyImage,
+    WorkflowStatus,
 )
 from rest_framework import serializers
 
@@ -135,3 +136,32 @@ class DirectAnalysisRequestSerializer(serializers.Serializer):
     image_urls = serializers.ListField(child=serializers.URLField(), allow_empty=False)
     notes = serializers.DictField(required=False)
     callback = WorkflowCallbackSerializer(required=False)
+
+
+class WorkflowStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkflowStatus
+        fields = [
+            "super_id",
+            "property_id",
+            "context",
+            "status",
+            "stage",
+            "progress",
+            "data_location",
+            "last_error",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class WorkflowStatusUpdateSerializer(serializers.Serializer):
+    context = serializers.CharField(max_length=64)
+    status = serializers.CharField(max_length=64)
+    property_id = serializers.CharField(
+        required=False, allow_blank=True, max_length=255
+    )
+    stage = serializers.CharField(required=False, allow_blank=True, max_length=128)
+    progress = serializers.FloatField(required=False)
+    data_location = serializers.CharField(required=False, allow_blank=True, max_length=2048)
+    last_error = serializers.CharField(required=False, allow_blank=True)

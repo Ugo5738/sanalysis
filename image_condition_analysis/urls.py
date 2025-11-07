@@ -11,4 +11,14 @@ urlpatterns = [
     path("update-prompt/", views.PromptUpdateView.as_view(), name="update-prompt"),
     path("get-prompt/", views.GetPromptView.as_view(), name="get-prompt"),
     path("analyze/", views.AnalysisView.as_view(), name="analyze"),
+    path(
+        "workflow-status/<uuid:super_id>/",
+        views.WorkflowStatusView.as_view(),
+        name="workflow-status-list",
+    ),
+    path(
+        "workflow-status/<uuid:super_id>/<str:context>/",
+        views.WorkflowStatusView.as_view(),
+        name="workflow-status-detail",
+    ),
 ]

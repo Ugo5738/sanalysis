@@ -2,9 +2,14 @@ import json
 from datetime import datetime
 from typing import Any, Dict, Optional
 
+from asgiref.sync import sync_to_async
 from analysis_service.config.logging_config import configure_logger
 from django.utils import timezone
-from image_condition_analysis.models import AnalysisEvent, AnalysisTask
+from image_condition_analysis.models import (
+    AnalysisEvent,
+    AnalysisTask,
+    WorkflowStatus,
+)
 from image_condition_analysis.utils.status_notifier import get_status_notifier
 
 
@@ -71,6 +76,31 @@ async def update_progress(
         logger.warning(
             f"Failed to update AnalysisTask progress for super_id={super_id}: {e}"
         )
+    else:
+        try:
+            defaults = {
+                "property_id": getattr(task, "property_id", None),
+                "status": status,
+                "stage": stage,
+                "progress": progress,
+                "data_location": (snapshot or {}).get("data_location")
+                if snapshot
+                else None,
+                "last_error": (extra or {}).get("error")
+                if status_override == "failed"
+                else None,
+            }
+            await sync_to_async(
+                WorkflowStatus.objects.update_or_create, thread_sensitive=True
+            )(
+                super_id=super_id,
+                context="image_condition_analysis",
+                defaults=defaults,
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to upsert WorkflowStatus for super_id=%s: %s", super_id, e
+            )
 
     # Log AnalysisEvent for traceability
     try:

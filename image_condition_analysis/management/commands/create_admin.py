@@ -16,6 +16,7 @@ class Command(BaseCommand):
         username: str = settings.ADMIN_USERNAME
         email: str = settings.ADMIN_EMAIL
         password: str = settings.ADMIN_PASSWORD
+        phone: str = settings.ADMIN_PHONE
 
         try:
             # Attempt to create a new superuser

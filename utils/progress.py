@@ -39,6 +39,7 @@ async def update_progress(
     progress_data = {"stage": stage, "message": message, "progress": progress}
     task = None
     status = status_override or ("completed" if progress >= 100.0 else "in_progress")
+    workflow_record = None
 
     # Upsert AnalysisTask status/progress
     try:
@@ -83,14 +84,14 @@ async def update_progress(
                 "status": status,
                 "stage": stage,
                 "progress": progress,
-                "data_location": (snapshot or {}).get("data_location")
-                if snapshot
-                else None,
                 "last_error": (extra or {}).get("error")
                 if status_override == "failed"
                 else None,
             }
-            await sync_to_async(
+            snapshot_location = (snapshot or {}).get("data_location") if snapshot else None
+            if snapshot_location:
+                defaults["data_location"] = snapshot_location
+            workflow_record, _ = await sync_to_async(
                 WorkflowStatus.objects.update_or_create, thread_sensitive=True
             )(
                 super_id=super_id,
@@ -154,7 +155,7 @@ async def update_progress(
             "progress": task.progress,
             "status": task.status,
         }
-        await notifier.notify(
+        snapshot_url = await notifier.notify(
             super_id=super_id,
             status=status,
             context="image_condition_analysis",
@@ -164,3 +165,23 @@ async def update_progress(
             webhook_url=task.callback_url,
             webhook_headers=task.callback_headers,
         )
+        if snapshot and snapshot_url:
+            snapshot["data_location"] = snapshot_url
+        if snapshot_url and (
+            not workflow_record or workflow_record.data_location != snapshot_url
+        ):
+            try:
+                if workflow_record:
+                    workflow_record.data_location = snapshot_url
+                    await sync_to_async(workflow_record.save, thread_sensitive=True)()
+                else:
+                    await sync_to_async(
+                        WorkflowStatus.objects.filter(
+                            super_id=super_id, context="image_condition_analysis"
+                        ).update,
+                        thread_sensitive=True,
+                    )(data_location=snapshot_url)
+            except Exception as e:
+                logger.warning(
+                    "Failed to persist data_location for super_id=%s: %s", super_id, e
+                )

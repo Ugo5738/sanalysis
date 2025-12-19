@@ -27,6 +27,7 @@ def analyze_images_direct(
     image_urls: list,
     notes: Optional[dict] = None,
     callback: Optional[dict] = None,
+    callback_urls: Optional[dict] = None,
     property_id: Optional[str] = None,
 ):
     """Entry point for direct image condition analysis using provided URLs.
@@ -35,7 +36,7 @@ def analyze_images_direct(
     """
     logger.info("Starting analyze_images_direct task...")
     async_to_sync(analyze_images_direct_async)(
-        super_id, image_urls, notes, callback, property_id
+        super_id, image_urls, notes, callback, callback_urls, property_id
     )
     logger.info("Done analyze_images_direct task...")
 
@@ -45,6 +46,7 @@ async def analyze_images_direct_async(
     image_urls: list,
     notes: Optional[dict],
     callback: Optional[dict],
+    callback_urls: Optional[dict],
     property_id: Optional[str],
 ):
     analysis_service = AnalysisService(super_id)
@@ -97,15 +99,18 @@ async def analyze_images_direct_async(
                 task_instance.callback_headers = {
                     str(key): str(value) for key, value in headers.items()
                 }
+        # Persist notes + callback_urls on the task for traceability (no schema migration required).
+        merged_notes = {}
+        try:
+            merged_notes = dict(getattr(task_instance, "notes", None) or {})
+        except Exception:
+            merged_notes = {}
+        if isinstance(notes, dict):
+            merged_notes.update(notes)
+        if isinstance(callback_urls, dict):
+            merged_notes["callback_urls"] = callback_urls
+        task_instance.notes = merged_notes
         await task_instance.asave()
-        # Persist notes payload on the task for traceability
-        if notes is not None:
-            try:
-                task_instance.notes = notes
-                await task_instance.asave()
-            except Exception:
-                # Non-fatal if storing notes fails
-                pass
 
         # Initial progress
         await emit(

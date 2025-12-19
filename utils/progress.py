@@ -20,6 +20,18 @@ def _serialize_for_json(obj: Any) -> str:
 
 logger = configure_logger(__name__)
 
+def _extract_callback_urls(callback_urls_payload: Any) -> list[str]:
+    if not isinstance(callback_urls_payload, dict):
+        return []
+    urls: list[str] = []
+    workflow_url = callback_urls_payload.get("workflow_callback_url")
+    external_url = callback_urls_payload.get("external_callback_url")
+    if workflow_url:
+        urls.append(str(workflow_url))
+    if external_url:
+        urls.append(str(external_url))
+    return list(dict.fromkeys(urls))
+
 
 async def update_progress(
     super_id: str,
@@ -144,8 +156,11 @@ async def update_progress(
                 data["details"] = snapshot
         if extra:
             data["extra"] = extra
+        callback_urls_payload = (task.notes or {}).get("callback_urls") if hasattr(task, "notes") else None
+        webhook_urls = _extract_callback_urls(callback_urls_payload)
         metadata = {
             "callback_url": task.callback_url,
+            "callback_urls": callback_urls_payload,
             "total_images": task.total_images,
             "notes": task.notes or {},
             "property_id": getattr(task, "property_id", None),
@@ -163,6 +178,7 @@ async def update_progress(
             summary=summary,
             metadata=metadata,
             webhook_url=task.callback_url,
+            webhook_urls=webhook_urls,
             webhook_headers=task.callback_headers,
         )
         if snapshot and snapshot_url:

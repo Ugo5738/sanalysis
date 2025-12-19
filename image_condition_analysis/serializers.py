@@ -136,6 +136,9 @@ class DirectAnalysisRequestSerializer(serializers.Serializer):
     image_urls = serializers.ListField(child=serializers.URLField(), allow_empty=False)
     notes = serializers.DictField(required=False)
     callback = WorkflowCallbackSerializer(required=False)
+    callback_urls = serializers.DictField(
+        child=serializers.URLField(), required=False, allow_empty=True
+    )
 
 
 class WorkflowStatusSerializer(serializers.ModelSerializer):

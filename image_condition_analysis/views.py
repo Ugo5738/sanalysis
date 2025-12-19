@@ -65,6 +65,7 @@ class AnalysisView(APIView):
         property_id = data.get("property_id") or None
         notes = data.get("notes")
         callback = data.get("callback")
+        callback_urls = data.get("callback_urls")
 
         if Property.objects.filter(super_id=super_id).exists():
             logger.warning(
@@ -82,7 +83,12 @@ class AnalysisView(APIView):
             )
 
         analyze_images_direct.delay(
-            super_id, image_urls, notes, callback, property_id=property_id
+            super_id,
+            image_urls,
+            notes,
+            callback,
+            callback_urls,
+            property_id=property_id,
         )
 
         return Response(

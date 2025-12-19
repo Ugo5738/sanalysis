@@ -1,0 +1,2 @@
+# CI requirements (no heavy ML/browser deps)
+-r requirements-base.txt

@@ -15,11 +15,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: requirements-ci.txt
       - name: Upgrade pip and Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-ci.txt
       - name: Run Tests
         env:
           # ===========================================================
@@ -34,6 +34,7 @@ jobs:
           ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
 
           # ------------------------- DATABASE -------------------------
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

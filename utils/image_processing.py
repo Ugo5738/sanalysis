@@ -1,13 +1,10 @@
 import asyncio
 import base64
 import io
+import threading
 
 import aiohttp
-import clip
-import cv2
 import numpy as np
-import pandas as pd
-import torch
 from analysis_service.config.logging_config import configure_logger
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
@@ -18,9 +15,42 @@ from PIL import Image
 logger = configure_logger(__name__)
 
 
-# Initialize CLIP model and preprocessing
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model, preprocess = clip.load("ViT-B/32", device=device)
+_clip_lock = threading.Lock()
+_clip_model = None
+_clip_preprocess = None
+_clip_device = None
+_torch = None
+
+
+def _load_clip():
+    global _clip_model, _clip_preprocess, _clip_device, _torch
+    if _clip_model is not None:
+        return _clip_model, _clip_preprocess, _clip_device, _torch
+    with _clip_lock:
+        if _clip_model is None:
+            try:
+                import clip
+                import torch
+            except ImportError as exc:
+                raise RuntimeError(
+                    "CLIP dependencies are not installed. Install requirements-ml.txt."
+                ) from exc
+            _clip_device = "cuda" if torch.cuda.is_available() else "cpu"
+            _clip_model, _clip_preprocess = clip.load(
+                "ViT-B/32", device=_clip_device
+            )
+            _torch = torch
+    return _clip_model, _clip_preprocess, _clip_device, _torch
+
+
+def _get_cv2():
+    try:
+        import cv2
+    except ImportError as exc:
+        raise RuntimeError(
+            "opencv-python is not installed. Install requirements-ml.txt."
+        ) from exc
+    return cv2
 
 
 async def compute_image_embedding(image_content):
@@ -29,6 +59,7 @@ async def compute_image_embedding(image_content):
 
 
 def sync_compute_embedding(image_content):
+    model, preprocess, device, torch = _load_clip()
     image = Image.open(io.BytesIO(image_content)).convert("RGB")
     image_input = preprocess(image).unsqueeze(0).to(device)
     with torch.no_grad():
@@ -38,6 +69,7 @@ def sync_compute_embedding(image_content):
 
 
 def compute_embedding(image_path):
+    model, preprocess, device, torch = _load_clip()
     image = Image.open(image_path).convert("RGB")
     image_input = preprocess(image).unsqueeze(0).to(device)
     with torch.no_grad():
@@ -134,6 +166,7 @@ async def download_images(
 
 
 def resize_with_aspect_ratio(image, target_size):
+    cv2 = _get_cv2()
     img = Image.open(image)
     img = img.convert("RGB")
     img_array = np.array(img)
@@ -155,6 +188,7 @@ def resize_with_aspect_ratio(image, target_size):
 
 
 async def merge_images(image_objects, condition=None):
+    cv2 = _get_cv2()
     target_size = (256, 256)
     resized_images = [
         resize_with_aspect_ratio(img.image, target_size) for img in image_objects

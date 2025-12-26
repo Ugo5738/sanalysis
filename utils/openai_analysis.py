@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import time
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from asgiref.sync import sync_to_async
@@ -17,6 +18,42 @@ def encode_image(image_file) -> str:
     """Encode an image file to base64 string."""
     with image_file.open("rb") as file:
         return base64.b64encode(file.read()).decode("utf-8")
+
+
+def log_openai_cost(
+    *,
+    super_id: Optional[str],
+    stage: str,
+    model: str,
+    prompt_tokens: Optional[int],
+    completion_tokens: Optional[int],
+    prompt_cost: Optional[float],
+    completion_cost: Optional[float],
+    path: str = "logs/openai_costs.log",
+) -> None:
+    """
+    Append a JSON line with cost details for a given super_id/stage.
+    Creates the log directory if it does not exist.
+    """
+    try:
+        log_dir = os.path.dirname(path)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "super_id": super_id,
+            "stage": stage,
+            "model": model,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "prompt_cost_usd": prompt_cost,
+            "completion_cost_usd": completion_cost,
+            "total_cost_usd": (prompt_cost or 0.0) + (completion_cost or 0.0),
+        }
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as e:  # defensive logging only
+        logger.warning(f"Failed to log OpenAI cost: {e}")
 
 
 def process_image_input(target_image: str) -> Optional[Dict[str, Any]]:

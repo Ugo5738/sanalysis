@@ -3,9 +3,11 @@ import json
 from collections import Counter
 
 import numpy as np
-from analysis_service.config.logging_config import configure_logger
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
+from sklearn.metrics.pairwise import cosine_similarity
+
+from analysis_service.config.logging_config import configure_logger
 from image_condition_analysis.models import (
     GroupedImages,
     ImageConditionAnalysis,
@@ -16,11 +18,11 @@ from image_condition_analysis.models import (
     PropertyImage,
     SampleImage,
 )
-from sklearn.metrics.pairwise import cosine_similarity
 from utils.image_processing import compute_embedding, merge_images
 from utils.openai_analysis import (
     analyze_single_image,
     encode_image,
+    log_openai_cost,
     update_prompt_json_file,
 )
 from utils.prompts import categorize_prompt, get_prompts, spaces
@@ -64,9 +66,7 @@ async def process_property(image_ids, update_progress, super_id):
                 Property.objects.get, thread_sensitive=True
             )(super_id=super_id)
         except Property.MultipleObjectsReturned:
-            duplicate_details = await sync_to_async(
-                list, thread_sensitive=True
-            )(
+            duplicate_details = await sync_to_async(list, thread_sensitive=True)(
                 Property.objects.filter(super_id=super_id)
                 .order_by("-updated_at", "-id")
                 .values_list("id", "updated_at")
@@ -218,6 +218,20 @@ async def categorize_images(
         if category_result:
             result = json.loads(category_result)
             logger.info(f"This is the result: {result}")
+
+            # Log token/cost usage for this OpenAI call
+            try:
+                log_openai_cost(
+                    super_id=getattr(property_instance, "super_id", None),
+                    stage="categorization",
+                    model="gpt-4o",
+                    prompt_tokens=structured_output.get("prompt_tokens"),
+                    completion_tokens=structured_output.get("completion_tokens"),
+                    prompt_cost=structured_output.get("prompt_tokens_cost"),
+                    completion_cost=structured_output.get("completion_tokens_cost"),
+                )
+            except Exception:
+                logger.warning("Failed to log OpenAI cost for categorization")
 
             await update_prompt_json_file(spaces, result)
             logger.info("Finished updating json file")
@@ -517,6 +531,20 @@ async def analyze_merged_images(
             try:
                 parsed_result = json.loads(result)
                 image_analyses = parsed_result.get("images", [])
+
+                # Log token/cost usage for this OpenAI call
+                try:
+                    log_openai_cost(
+                        super_id=super_id,
+                        stage="detailed_analysis",
+                        model="gpt-4o",
+                        prompt_tokens=structured_output.get("prompt_tokens"),
+                        completion_tokens=structured_output.get("completion_tokens"),
+                        prompt_cost=structured_output.get("prompt_tokens_cost"),
+                        completion_cost=structured_output.get("completion_tokens_cost"),
+                    )
+                except Exception:
+                    logger.warning("Failed to log OpenAI cost for detailed_analysis")
 
                 processed_analyses = []
 

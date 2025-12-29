@@ -1,6 +1,7 @@
 import base64
 import json
 from collections import Counter
+from typing import Optional
 
 import numpy as np
 from asgiref.sync import sync_to_async
@@ -253,10 +254,12 @@ async def categorize_images(
         )
 
 
-def standardize_condition_label(label: str) -> str:
+def standardize_condition_label(label: Optional[str]) -> str:
     """
     Standardizes the condition label to match predefined labels.
     """
+    if not label:
+        return "Average"
     label = label.strip().lower().replace("_", " ").replace("-", " ")
     mapping = {
         "excellent": "Excellent",
@@ -270,9 +273,30 @@ def standardize_condition_label(label: str) -> str:
 
 async def update_property_image_category(property_instance, image_id, category_info):
     property_image = await PropertyImage.objects.aget(id=image_id)
-    category = category_info.get("category", "").lower()
+    raw_category = category_info.get("category")
+    category = (raw_category or "").strip().lower()
+    if not category:
+        logger.warning(
+            "Categorization returned empty category; defaulting to 'others'",
+            extra={
+                "image_id": image_id,
+                "super_id": getattr(property_instance, "super_id", None),
+            },
+        )
+        category = "others"
+
     property_image.main_category = category
-    details = category_info.get("details", {})
+    details = category_info.get("details") or {}
+    if not isinstance(details, dict):
+        logger.warning(
+            "Categorization details not a dict; coercing to empty",
+            extra={
+                "image_id": image_id,
+                "super_id": getattr(property_instance, "super_id", None),
+                "details_type": type(details).__name__,
+            },
+        )
+        details = {}
 
     # Load the data.json content
     with open("utils/data.json", "r") as f:
@@ -283,13 +307,13 @@ async def update_property_image_category(property_instance, image_id, category_i
 
     # Determine sub_category and space_type
     if category == "internal":
-        sub_category = details.get("room_type", "")
+        sub_category = details.get("room_type") or ""
         space_type = sub_category
     elif category == "external":
-        sub_category = details.get("exterior_type", "")
+        sub_category = details.get("exterior_type") or ""
         space_type = sub_category
     elif category == "floor plan":
-        floor_type = details.get("floor_type", "floor plan")
+        floor_type = details.get("floor_type") or "floor plan"
         property_image.sub_category = floor_type
         property_image.room_type = floor_type
         # Add this image URL to the property floorplan_urls field if not already present
@@ -303,7 +327,7 @@ async def update_property_image_category(property_instance, image_id, category_i
         logger.info(f"Image ID {image_id} categorized as floor plan: {floor_type}")
         return
     else:
-        sub_category = details.get("others", "")
+        sub_category = details.get("others") or ""
         space_type = sub_category
 
     # Find the matching subcategory in data.json
@@ -577,7 +601,19 @@ async def analyze_merged_images(
                 # Compute Similarity Scores
                 # -------------------------
                 for analysis in image_analyses:
-                    image_number = int(analysis.get("image_tag_number"))
+                    raw_image_number = analysis.get("image_tag_number")
+                    try:
+                        image_number = int(raw_image_number)
+                    except (TypeError, ValueError):
+                        logger.warning(
+                            "Invalid image_tag_number in analysis; skipping entry",
+                            extra={
+                                "image_tag_number": raw_image_number,
+                                "super_id": getattr(property_instance, "super_id", None),
+                            },
+                        )
+                        continue
+
                     img = image_quadrant_mapping.get(image_number)
                     if not img:
                         logger.warning(
@@ -585,9 +621,21 @@ async def analyze_merged_images(
                         )
                         continue
 
-                    condition_label_raw = analysis.get("condition", "Average")
+                    condition_label_raw = analysis.get("condition") or "Average"
                     condition_label = standardize_condition_label(condition_label_raw)
-                    condition_score = int(analysis.get("condition_score", 50))
+                    raw_condition_score = analysis.get("condition_score", 50)
+                    try:
+                        condition_score = int(raw_condition_score)
+                    except (TypeError, ValueError):
+                        logger.warning(
+                            "Invalid condition_score; defaulting to 50",
+                            extra={
+                                "condition_score": raw_condition_score,
+                                "super_id": getattr(property_instance, "super_id", None),
+                            },
+                        )
+                        condition_score = 50
+
                     all_condition_scores.append(condition_score)
                     all_condition_labels.append(condition_label)
 

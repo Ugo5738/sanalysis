@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from analysis_service.config.logging_config import configure_logger
+import re
 from asgiref.sync import async_to_sync, sync_to_async
 from celery import shared_task
 from image_condition_analysis.models import Property
@@ -19,6 +20,36 @@ def _snapshot_copy(payload: dict) -> dict:
         return json.loads(json.dumps(payload))
     except (TypeError, ValueError):
         return payload.copy()
+
+
+def _normalize_image_urls(image_urls: list) -> list:
+    """
+    Deduplicate image URLs and prefer the base/original Rightmove variant.
+
+    For URLs like IMG_01_0000.jpeg and IMG_01_0000_max_656x437.jpeg, keep the
+    non-max URL and drop the higher-res duplicate.
+    """
+    if not image_urls:
+        return []
+
+    urls_by_base = {}
+    for url in image_urls:
+        # Strip query params for comparison but keep the full URL for output
+        url_no_query = url.split("?", 1)[0]
+        base_key = re.sub(r"_max_\d+x\d+(?=\.[a-zA-Z0-9]+$)", "", url_no_query)
+        is_max_variant = "_max_" in url_no_query
+
+        current = urls_by_base.get(base_key)
+        if current is None:
+            urls_by_base[base_key] = (url, is_max_variant)
+        else:
+            # Prefer non-max over max; otherwise keep the first seen
+            if (not is_max_variant) and current[1]:
+                urls_by_base[base_key] = (url, False)
+
+    # Preserve deterministic ordering
+    normalized = [value[0] for key, value in sorted(urls_by_base.items())]
+    return normalized
 
 
 @shared_task()
@@ -50,12 +81,13 @@ async def analyze_images_direct_async(
     property_id: Optional[str],
 ):
     analysis_service = AnalysisService(super_id)
+    normalized_image_urls = _normalize_image_urls(image_urls)
     task_instance = None
     status_report = {
         "super_id": super_id,
         "property_id": property_id,
         "notes": notes or {},
-        "image_urls": image_urls,
+        "image_urls": normalized_image_urls,
         "downloads": {},
         "stages": {},
         "final_result": None,
@@ -89,7 +121,7 @@ async def analyze_images_direct_async(
     try:
         # Create or get task record
         task_instance = await analysis_service.get_or_create_task()
-        task_instance.total_images = len(image_urls)
+        task_instance.total_images = len(normalized_image_urls)
         if property_id:
             task_instance.property_id = property_id
         if callback:
@@ -125,7 +157,7 @@ async def analyze_images_direct_async(
         property_instance = Property(
             super_id=super_id,
             property_id=property_id,
-            image_urls=image_urls or [],
+            image_urls=normalized_image_urls or [],
         )
         # Persist early so FK relationships work and IDs are assigned
         await property_instance.asave()

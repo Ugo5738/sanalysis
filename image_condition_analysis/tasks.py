@@ -24,31 +24,38 @@ def _snapshot_copy(payload: dict) -> dict:
 
 def _normalize_image_urls(image_urls: list) -> list:
     """
-    Deduplicate image URLs and prefer the base/original Rightmove variant.
-
-    For URLs like IMG_01_0000.jpeg and IMG_01_0000_max_656x437.jpeg, keep the
-    non-max URL and drop the higher-res duplicate.
+    Deduplicate Rightmove image URLs by normalizing a key:
+    - Strip query params
+    - Normalize /dir/property-photo|property-floorplan to the plain path
+    - Remove size suffixes like _max_656x437
+    - Prefer the base hash triplet (/property-photo/<hash>/<id>/<hash>) when present
     """
     if not image_urls:
         return []
 
-    urls_by_base = {}
-    for url in image_urls:
-        # Strip query params for comparison but keep the full URL for output
+    def _image_key(url: str) -> str:
         url_no_query = url.split("?", 1)[0]
-        base_key = re.sub(r"_max_\d+x\d+(?=\.[a-zA-Z0-9]+$)", "", url_no_query)
-        is_max_variant = "_max_" in url_no_query
+        normalized_path = (
+            url_no_query.replace("/dir/property-photo/", "/property-photo/")
+            .replace("/dir/property-floorplan/", "/property-floorplan/")
+        )
+        normalized_path = re.sub(
+            r"_max_\d+x\d+(?=\.[a-zA-Z0-9]+$)", "", normalized_path
+        )
+        m = re.search(
+            r"/(?:property-photo|property-floorplan)/([a-fA-F0-9]+/\d+/[a-fA-F0-9]+)",
+            normalized_path,
+        )
+        if m:
+            return m.group(1).lower()
+        return normalized_path.lower()
 
-        current = urls_by_base.get(base_key)
-        if current is None:
-            urls_by_base[base_key] = (url, is_max_variant)
-        else:
-            # Prefer non-max over max; otherwise keep the first seen
-            if (not is_max_variant) and current[1]:
-                urls_by_base[base_key] = (url, False)
+    dedup = {}
+    for url in image_urls:
+        key = _image_key(url)
+        dedup.setdefault(key, url)  # keep first seen for deterministic output
 
-    # Preserve deterministic ordering
-    normalized = [value[0] for key, value in sorted(urls_by_base.items())]
+    normalized = [dedup[k] for k in sorted(dedup.keys())]
     return normalized
 
 
